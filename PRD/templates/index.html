@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PRD Fire-Case Sizing</title>
+
+    <!-- THIS is the missing piece -->
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+
+<body>
+    <div class="container">
+        <h1>PRD Fire-Case Sizing</h1>
+
+        <form method="post" action="/calculate">
+
+            <!-- Your entire form content goes here -->
+            <!-- (I’m inserting your exact sections unchanged) -->
+
+            <section>
+              <h2>Vessel Geometry</h2>
+
+              <label for="orientation">Orientation</label>
+              <select id="orientation" name="orientation" required>
+                <option value="Vertical">Vertical</option>
+              </select>
+
+              <label for="head_type">Head Type</label>
+              <select id="head_type" name="head_type" required>
+                <option value="ASME_FD">ASME F&D</option>
+                <option value="Hemispherical">Hemispherical</option>
+                <option value="Ellipsoidal">Ellipsoidal (2:1)</option>
+              </select>
+
+              <label for="tangent_length_m">Shell Height (m)</label>
+              <input id="tangent_length_m" name="tangent_length_m" type="number" step="0.01" required>
+
+              <label for="outer_diameter_m">Outer Diameter (m)</label>
+              <input id="outer_diameter_m" name="outer_diameter_m" type="number" step="0.01" required>
+
+              <label for="shell_thickness_mm">Shell Thickness (mm)</label>
+              <input id="shell_thickness_mm" name="shell_thickness_mm" type="number" step="0.001" required>
+
+              <label for="bottom_height_m">Surface to Vessel Bottom Height (m)</label>
+              <input id="bottom_height_m" name="bottom_height_m" type="number" step="0.01" required>
+
+              <label for="MAWP_psig">Maximum Allowable Working Pressure (psig)</label>
+              <input id="MAWP_psig" name="MAWP_psig" type="number" step="0.01" required>
+
+              <label for="normal_fill_volume_m3">Normal Fill Volume (m³)</label>
+              <input id="normal_fill_volume_m3" name="normal_fill_volume_m3" type="number" step="0.01" required>
+
+            </section>
+
+            <section>
+              <h2>Relief Line Inputs</h2>
+
+              <label for="fire_standard">Fire Standard</label>
+              <select id="fire_standard" name="fire_standard" required>
+                <option value="API2000">API2000</option>
+                <option value="API520">API520</option>
+              </select>
+
+              <label for="P_operating_psig">Operating Pressure (psig)</label>
+              <input id="P_operating_psig" name="P_operating_psig" type="number" step="0.01" required>
+              <small id="P_design_suggestion" style="color: #666; font-size: 0.85em;"></small>
+
+              <label for="firefighting">Prompt Firefighting and Drainage</label>
+              <select id="firefighting" name="firefighting" required>
+                <option value="false">No</option>
+                <option value="true">Yes</option>
+              </select>
+
+              <label for="accum_percent">Max Accumulated Pressure (%)</label>
+              <input id="accum_percent" name="accum_percent" type="number" step="0.1" value="21.0" required>
+
+              <label for="atm_psia">Atmospheric Pressure (psia)</label>
+              <input id="atm_psia" name="atm_psia" type="number" step="0.1" value="14.7" required>
+
+              <label for="backpressure_psig">Constant Backpressure (psig)</label>
+              <input id="backpressure_psig" name="backpressure_psig" type="number" step="0.1" required>
+
+              <label for="valve_arrangement">Relief Valve Arrangement</label>
+              <select id="valve_arrangement" name="valve_arrangement" required>
+                <option value="PSV">PSV</option>
+                <option value="PSV_RD">PSV with RD</option>
+              </select>
+
+              <label for="line_spec">Relief Line Specification</label>
+              <input id="line_spec" name="line_spec" type="text" value="ASME BPE">
+            </section>
+
+            <section>
+              <h2>Fluid Properties</h2>
+
+              <label for="k">Specific Heat Ratio (k)</label>
+              <input id="k" name="k" type="number" step="0.01" required>
+
+              <label for="h_fg_kJ_per_kg">Enthalpy of Vaporization (kJ/kg)</label>
+              <input id="h_fg_kJ_per_kg" name="h_fg_kJ_per_kg" type="number" step="1" required>
+
+              <label for="M_g_per_mol">Molecular Weight (g/mol)</label>
+              <input id="M_g_per_mol" name="M_g_per_mol" type="number" step="0.1" required>
+              <label for="Z">Compressibility Factor (Z)</label>
+              <input id="Z" name="Z" type="number" step="0.01" required>
+
+              <label for="T_C">Temperature at Relieving Pressure (°C)</label>
+              <input id="T_C" name="T_C" type="number" step="0.1" required>
+            </section>
+
+            <section>
+              <h2>Valve Factors</h2>
+
+              <label for="Kd">Kd</label>
+              <input id="Kd" name="Kd" type="number" step="0.001" value="0.975" required>
+
+              <label for="Kb">Kb</label>
+              <input id="Kb" name="Kb" type="number" step="0.01" value="1.0" required>
+
+              <label for="Kc">Kc</label>
+              <input id="Kc" name="Kc" type="number" step="0.01" value="1.0" required>
+
+              <label for="Ke">Ke</label>
+              <input id="Ke" name="Ke" type="number" step="0.01" value="1.0" required>
+            </section>
+
+            <button type="submit">Calculate PRD Size</button>
+        </form>
+
+        <div id="results" class="results" style="display:none;"></div>
+    </div>
+
+    <script>
+// Auto-suggest 90% of MAWP for Operating Pressure
+document.getElementById("MAWP_psig").addEventListener("input", function() {
+  const mawp = parseFloat(this.value);
+  const suggestionEl = document.getElementById("P_design_suggestion");
+  const operatingPressureInput = document.getElementById("P_operating_psig");
+  
+  if (!isNaN(mawp) && mawp > 0) {
+    // Suggest 90% of MAWP (both in psig)
+    const suggested = (mawp * 0.9).toFixed(2);
+    suggestionEl.textContent = `Suggested: ${suggested} psig (90% of MAWP)`;
+    
+    // Auto-fill if empty
+    if (!operatingPressureInput.value) {
+      operatingPressureInput.value = suggested;
+    }
+  } else {
+    suggestionEl.textContent = "";
+  }
+});
+
+// Trigger on page load if MAWP has a value
+document.addEventListener("DOMContentLoaded", function() {
+  const mawpInput = document.getElementById("MAWP_psig");
+  if (mawpInput.value) {
+    mawpInput.dispatchEvent(new Event("input"));
+  }
+});
+
+document.querySelector("form").addEventListener("submit", async function(e) {
+  e.preventDefault();
+
+  const formData = new FormData(this);
+  const data = Object.fromEntries(formData.entries());
+
+  const resultsDiv = document.getElementById("results");
+  resultsDiv.innerHTML = "<em>Calculating...</em>";
+  resultsDiv.style.display = "block";
+
+  try {
+    const response = await fetch("/calculate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    });
+
+    const result = await response.json();
+    console.log("API Response:", result);  // Debug log
+
+    if (result.error) {
+      resultsDiv.innerHTML = `<strong style="color: #c00;">Error:</strong> ${result.error}`;
+      return;
+    }
+
+    // Check that required fields exist
+    if (result.A_wetted_m2 === undefined) {
+      resultsDiv.innerHTML = `<strong style="color: #c00;">Error:</strong> Invalid response from server`;
+      console.error("Missing fields in response:", result);
+      return;
+    }
+
+    // Safely format numbers with fallbacks
+    const formatNum = (val, digits) => {
+      if (val === undefined || val === null) return "N/A";
+      return Number(val).toFixed(digits);
+    };
+
+    const output = `
+      <h3>Results</h3>
+      <strong>Height at Top of Liquid in Vessel:</strong> ${formatNum(result.liquid_height_m, 2)} m<br>
+      <strong>Liquid Height in Vessel Exposed to Fire:</strong> ${formatNum(result.liquid_height_exposed_m, 2)} m<br>
+      <strong>Wetted Surface Area:</strong> ${formatNum(result.A_wetted_m2, 2)} m²<br>
+      <strong>Fire Heat Load Calculation Method:</strong> ${result.fire_standard_used || 'N/A'}<br>
+      <strong>Fire Heat Load:</strong> ${formatNum(result.Q_dot_W / 1000, 2)} kW<br>
+      <strong>Evaporation Rate:</strong> ${formatNum(result.m_kg_hr, 1)} kg/hr (${formatNum(result.W_lb_hr, 1)} lb/hr)<br>
+      <strong>Relieving Pressure:</strong> ${formatNum(result.P1_psia, 2)} psia<br>
+      <strong>Critical Flow:</strong> ${result.critical ? "Yes" : "No"}<br>
+      <strong>Required Area:</strong> ${formatNum(result.A_required_in2, 4)} in²<br>
+      <strong>Selected Orifice:</strong> ${result.orifice_letter || "N/A"}<br>
+      <strong>Effective Orifice Area:</strong> ${formatNum(result.orifice_area_in2, 3)} in²<br>
+      <strong>Effective Orifice Diameter:</strong> ${formatNum(result.orifice_diameter_in, 3)}"<br>
+      <strong>Minimum Inlet Size:</strong> ${formatNum(result.inlet_size_in, 1)}" (${formatNum(result.inlet_size_in * 25.4, 0)} mm)
+    `;
+
+    resultsDiv.innerHTML = output;
+  } catch (err) {
+    console.error("Fetch error:", err);
+    resultsDiv.innerHTML = `<strong style="color: #c00;">Error:</strong> ${err.message}`;
+  }
+});
+    </script>
+</body>
+</html>
+
